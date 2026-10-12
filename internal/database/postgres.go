@@ -51,9 +51,12 @@ func RunMigrations(db *gorm.DB, migrationFilePath string) {
 }
 
 func AutoMigrateAndSeed(db *gorm.DB) {
+	log.Println("Enabling PostgreSQL UUID extensions...")
+	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
+	db.Exec("CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";")
+
 	log.Println("Running GORM AutoMigrate for models...")
-	migrator := db.Migrator()
-	err := migrator.AutoMigrate(
+	err := db.AutoMigrate(
 		&model.Branch{},
 		&model.User{},
 		&model.RefreshToken{},
@@ -85,35 +88,12 @@ func AutoMigrateAndSeed(db *gorm.DB) {
 }
 
 func ResetAndSeed(db *gorm.DB) {
-	log.Println("RESETTING DATABASE DARI 0: Dropping all tables...")
-	migrator := db.Migrator()
-	tables := []interface{}{
-		&model.AuditLog{},
-		&model.Inventory{},
-		&model.AssetRelease{},
-		&model.PawnExtension{},
-		&model.Payment{},
-		&model.Disbursement{},
-		&model.PawnTransaction{},
-		&model.ApprovalRule{},
-		&model.Appraisal{},
-		&model.MarketComparable{},
-		&model.AssetInspection{},
-		&model.AssetPhoto{},
-		&model.Asset{},
-		&model.CategoryChecklist{},
-		&model.AssetCategory{},
-		&model.CustomerDocument{},
-		&model.Customer{},
-		&model.PasswordReset{},
-		&model.RefreshToken{},
-		&model.User{},
-		&model.Branch{},
-	}
-	for _, t := range tables {
-		_ = migrator.DropTable(t)
-	}
-	log.Println("All tables dropped. Re-running AutoMigrate & Seed...")
+	log.Println("RESETTING DATABASE DARI 0: Dropping public schema CASCADE...")
+	db.Exec("DROP SCHEMA IF EXISTS public CASCADE;")
+	db.Exec("CREATE SCHEMA public;")
+	db.Exec("GRANT ALL ON SCHEMA public TO postgres;")
+	db.Exec("GRANT ALL ON SCHEMA public TO public;")
+	log.Println("Schema public recreated clean. Re-running AutoMigrate & Seed...")
 	AutoMigrateAndSeed(db)
 }
 
