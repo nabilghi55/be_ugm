@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ugm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: samplegadai
+    ports:
+      - "15432:5432"
+    volumes:
+      - ugm_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d samplegadai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ugm_net
+
+  backend:
+    build: .
+    container_name: ugm_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8090:8080"
+    environment:
+      PORT: "8080"
+      APP_ENV: "production"
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_USER: "postgres"
+      DB_PASSWORD: "postgrespassword"
+      DB_NAME: "samplegadai"
+      JWT_SECRET: "super-secret-production-access-key-2026"
+      JWT_REFRESH_SECRET: "super-secret-production-refresh-key-2026"
+    networks:
+      - ugm_net
+
+networks:
+  ugm_net:
+    name: ugm_net
+    external: true
+
+volumes:
+  ugm_pgdata:
